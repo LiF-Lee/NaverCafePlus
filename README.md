@@ -2,6 +2,7 @@
   <img style="width:256px;" src="https://github.com/LiF-Lee/NaverCafePlus/assets/66173558/e371f614-3a97-4ce4-b41f-a6f0749e38c9"/>
   <h1>𝐍𝐚𝐯𝐞𝐫𝐂𝐚𝐟𝐞𝐏𝐥𝐮𝐬</h1>
   <h3>네이버카페의 게시글 읽기 차단을 우회합니다.</h3>
+  <h4><a href="https://github.com/LiF-Lee/NaverCafePlus/releases/latest">최신 버전 다운로드</a></h4>
   <br>
   <br>
   <br>
