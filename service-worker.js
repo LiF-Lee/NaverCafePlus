@@ -20,26 +20,26 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 function openLinkInActiveTab(linkUrl) {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         let activeTab = tabs[0];
-        chrome.tabs.sendMessage(activeTab.id, { type: "GetContents", linkUrl });
+        chrome.tabs.sendMessage(activeTab.id, { type: "GetContents", linkUrl, tryCount: 0 });
     });
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === "GetContents" && message.title && message.date) {
-        const query = encodeURIComponent(message.title);
-        const searchUrl = `https://s.search.naver.com/p/cafe/47/search.naver?query=${query}&date_from=${message.date}&date_to=${message.date}&start=1&display=30&ssc=tab.m_cafe.all&prmore=1&st=rel&date_option=8`;
+        const query = encodeURIComponent(`"${message.title}"`);
+        const searchUrl = `https://s.search.naver.com/p/cafe/47/search.naver?query=${query}&date_from=${message.date}&date_to=${message.date}&start=${1 + (30 * message.tryCount)}&display=30&ssc=tab.m_cafe.all&prmore=1&st=rel&date_option=8`;
 
         fetch(searchUrl)
             .then(response => response.json())
-            .then(data => fetchResultsHandler(data, message.linkUrl, sender.tab.url));
+            .then(data => fetchResultsHandler(data, message.linkUrl, sender.tab.url, message.title, message.date, message.tryCount));
         return true;
     }
     return false;
 });
 
-function fetchResultsHandler(data, linkUrl, pageUrl) {
+function fetchResultsHandler(data, linkUrl, pageUrl, title, date, tryCount) {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         let activeTab = tabs[0];
-        chrome.tabs.sendMessage(activeTab.id, { type: "FetchData", linkUrl, pageUrl, data });
+        chrome.tabs.sendMessage(activeTab.id, { type: "FetchData", linkUrl, pageUrl, data, title, date, tryCount });
     });
 }

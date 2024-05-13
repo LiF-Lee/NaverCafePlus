@@ -2,7 +2,7 @@
     "manifest_version": 3,
     "name": "Naver Cafe Plus",
     "description": "네이버카페의 게시글 읽기 차단을 우회합니다.",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "permissions": [
         "contextMenus", "activeTab", "scripting", "storage", "nativeMessaging", "tabs", "declarativeContent"
     ],

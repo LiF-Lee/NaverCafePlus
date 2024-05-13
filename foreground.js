@@ -6,7 +6,9 @@ function extractContentDetails(linkUrl) {
     const linkElement = doc.querySelector(`a[href="${linkUrl.replace('https://cafe.naver.com', '')}"]`);
     if (!linkElement) return {};
 
-    const title = linkElement.textContent.trim();
+    const titleNodes = Array.from(linkElement.childNodes).filter(node => node.nodeType === Node.TEXT_NODE || (node.nodeType === Node.ELEMENT_NODE && node.className !== 'head'));
+    const title = titleNodes.map(node => node.textContent.trim()).join(' ').replace(/[^\p{Script=Hangul}\p{Script=Latin}\p{Number}\s,.\-!?()\[\]{}#$%^&*+=_:'"`~\\\/;<>@|]/gu, '');
+
     const dateElement = linkElement.closest('tr').querySelector('.td_date');
     if (!title || !dateElement) return {};
 
@@ -45,11 +47,15 @@ function extractLinksFromResponse(linkUrl, pageUrl, data) {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === "GetContents") {
         const contentDetails = extractContentDetails(message.linkUrl);
-        chrome.runtime.sendMessage({...message, ...contentDetails});
+        chrome.runtime.sendMessage({ ...message, ...contentDetails });
     } else if (message.type === "FetchData") {
         const responseLinks = extractLinksFromResponse(message.linkUrl, message.pageUrl, message.data);
-
         if (responseLinks.length === 0) {
+            message.tryCount++;
+            if (message.tryCount < 5) {
+                chrome.runtime.sendMessage({ type: "GetContents", title: message.title, date: message.date, linkUrl: message.linkUrl, tryCount: message.tryCount });
+                return;
+            }
             alert("페이지를 열 수 없습니다.");
         } else {
             window.open(responseLinks[0].url, '_blank');
