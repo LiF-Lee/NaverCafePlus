@@ -52,11 +52,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const responseLinks = extractLinksFromResponse(message.linkUrl, message.pageUrl, message.data);
         if (responseLinks.length === 0) {
             message.tryCount++;
-            if (message.tryCount < 5) {
+            if (message.tryCount % 5 != 0) {
                 chrome.runtime.sendMessage({ type: "GetContents", title: message.title, date: message.date, linkUrl: message.linkUrl, tryCount: message.tryCount });
                 return;
             }
-            alert("페이지를 열 수 없습니다.");
+            if (confirm(`페이지를 열 수 없습니다. (검색 ${message.tryCount} 페이지)\n계속 검색하시겠습니까?`)) {
+                chrome.runtime.sendMessage({ type: "GetContents", title: message.title, date: message.date, linkUrl: message.linkUrl, tryCount: message.tryCount });
+            }
         } else {
             window.open(responseLinks[0].url, '_blank');
         }
