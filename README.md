@@ -30,6 +30,12 @@
   <br>
   <br>
   <br>
-  <h4>우회할 게시글 우클릭 후 "네이버카페 플러스로 열기" 선택</h4>
+  <h4>우회할 게시글 우클릭 후 "네이버카페 플러스로 열기" 선택 (1.0.x 이전 버전)</h4>
   <img style="width:512px;" src="https://github.com/LiF-Lee/NaverCafePlus/assets/66173558/661175a1-a689-42f2-a01f-3fb56d565eb5"/>
+  <br>
+  <br>
+  <br>
+  <h4>게시글 클릭 시 자동 우회 (1.1.x 이후 버전)</h4>
+  <h5>네이버카페에서 우클릭 후 활성화 여부 선택 가능</h5>
+  <img style="width:512px;" src="https://github.com/user-attachments/assets/aadcfafd-7fcc-4832-9c8c-6a3dea205018"/>
 </div>
