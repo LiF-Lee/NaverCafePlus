@@ -2,9 +2,15 @@
     "manifest_version": 3,
     "name": "Naver Cafe Plus",
     "description": "네이버카페의 게시글 읽기 차단을 우회합니다.",
-    "version": "1.0.1",
+    "version": "1.1.0",
     "permissions": [
-        "contextMenus", "activeTab", "scripting", "storage", "nativeMessaging", "tabs", "declarativeContent"
+        "contextMenus", 
+        "activeTab", 
+        "scripting", 
+        "storage", 
+        "nativeMessaging", 
+        "tabs", 
+        "declarativeContent"
     ],
     "host_permissions": [
         "*://*.naver.com/*"
@@ -15,7 +21,7 @@
     "content_scripts": [{
         "js": ["foreground.js"],
         "matches": ["*://*.naver.com/*"],
-        "all_frames": false 
+        "all_frames": true
     }],
     "icons": {
 		"16": "Icons/Icon16.png",
