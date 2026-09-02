@@ -1,6 +1,8 @@
 const ARTICLE_PATH_NEW = /^\/(?:f-e|ca-fe)\/cafes\/(\d+)\/articles\/(\d+)\/?$/;
 const ARTICLE_PATH_OLD = /^\/([^/]+)\/(\d+)\/?$/;
 const RESERVED_FIRST_SEGMENT = /^(?:f-e|ca-fe)$/i;
+const CAFE_ID_PATH = /^\/(?:f-e|ca-fe)\/cafes\/(\d+)(?:\/|$)/;
+const CAFE_ID_SCRIPT = /g_sClubId\s*=\s*["'](\d+)["']/;
 
 let isEnabled = false;
 
@@ -39,13 +41,18 @@ function parseArticleUrl(rawUrl) {
 
     const oldFormat = url.pathname.match(ARTICLE_PATH_OLD);
     if (oldFormat && !RESERVED_FIRST_SEGMENT.test(oldFormat[1])) {
-        return { cafeId: null, articleId: oldFormat[2], hasArt: hasArt };
+        return {
+            cafeId: null,
+            cafeName: oldFormat[1].toLowerCase(),
+            articleId: oldFormat[2],
+            hasArt: hasArt
+        };
     }
 
     return null;
 }
 
-function collectCurrentArticleIds() {
+function collectContextUrls() {
     const candidates = [location.href];
 
     try {
@@ -78,8 +85,13 @@ function collectCurrentArticleIds() {
         }
     }
 
+    return candidates;
+}
+
+function collectCurrentArticleIds() {
     const ids = new Set();
-    for (const raw of candidates) {
+
+    for (const raw of collectContextUrls()) {
         const info = parseArticleUrl(raw);
         if (info) {
             ids.add(String(info.articleId));
@@ -87,6 +99,66 @@ function collectCurrentArticleIds() {
     }
 
     return ids;
+}
+
+function findCurrentCafeId() {
+    for (const raw of collectContextUrls()) {
+        let url;
+        try {
+            url = new URL(raw);
+        } catch (e) {
+            continue;
+        }
+
+        const fromPath = url.pathname.match(CAFE_ID_PATH);
+        if (fromPath) {
+            return fromPath[1];
+        }
+
+        for (const key of ['clubid', 'search.clubid', 'cafeId', 'clubId']) {
+            const value = url.searchParams.get(key);
+            if (value && /^\d+$/.test(value)) {
+                return value;
+            }
+        }
+    }
+
+    const hidden = document.querySelector('input[name="clubid"], input[name="search.clubid"]');
+    if (hidden && /^\d+$/.test(hidden.value || '')) {
+        return hidden.value;
+    }
+
+    for (const script of document.querySelectorAll('script:not([src])')) {
+        const found = (script.textContent || '').match(CAFE_ID_SCRIPT);
+        if (found) {
+            return found[1];
+        }
+    }
+
+    return null;
+}
+
+function findCurrentCafeName() {
+    for (const raw of collectContextUrls()) {
+        let url;
+        try {
+            url = new URL(raw);
+        } catch (e) {
+            continue;
+        }
+
+        const segment = (url.pathname.split('/')[1] || '');
+        if (!segment || RESERVED_FIRST_SEGMENT.test(segment)) {
+            continue;
+        }
+        if (/^\d+$/.test(segment) || /\.nhn$/i.test(segment)) {
+            continue;
+        }
+
+        return segment.toLowerCase();
+    }
+
+    return null;
 }
 
 function resolveTargetWindow(linkElement) {
@@ -152,7 +224,26 @@ function shouldBypass(event, linkElement) {
         return null;
     }
 
-    return { url: linkElement.href, title: title, targetWindow: targetWindow };
+    // /카페명/글번호 형식에는 숫자 cafeId가 없습니다. 현재 페이지에서 찾아 채웁니다.
+    let cafeId = info.cafeId;
+    if (!cafeId) {
+        const currentName = findCurrentCafeName();
+        if (currentName && info.cafeName && currentName !== info.cafeName) {
+            return null;
+        }
+
+        cafeId = findCurrentCafeId();
+        if (!cafeId) {
+            return null;
+        }
+    }
+
+    return {
+        url: linkElement.href,
+        title: title,
+        cafeId: cafeId,
+        targetWindow: targetWindow
+    };
 }
 
 document.addEventListener('click', (event) => {
@@ -172,7 +263,8 @@ document.addEventListener('click', (event) => {
     chrome.runtime.sendMessage({
         action: "openLink",
         url: request.url,
-        title: request.title
+        title: request.title,
+        cafeId: request.cafeId
     }, (response) => {
         const url = !chrome.runtime.lastError && response && response.url
             ? response.url

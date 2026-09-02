@@ -37,8 +37,8 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     }
 });
 
-async function resolveArticleUrl(requestUrl, articleTitle) {
-    const cafeInfo = extractCafeInfo(requestUrl);
+async function resolveArticleUrl(requestUrl, articleTitle, fallbackCafeId) {
+    const cafeInfo = extractCafeInfo(requestUrl, fallbackCafeId);
     if (!cafeInfo) {
         return requestUrl;
     }
@@ -56,7 +56,7 @@ async function resolveArticleUrl(requestUrl, articleTitle) {
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message && message.action === "openLink" && message.url) {
-        resolveArticleUrl(message.url, message.title)
+        resolveArticleUrl(message.url, message.title, message.cafeId)
             .then((url) => sendResponse({ url: url }))
             .catch((error) => {
                 console.log(`NCP Error: ${error}`);
@@ -73,7 +73,7 @@ function updateContextMenu(isEnabled) {
     }, () => chrome.runtime.lastError);
 }
 
-function extractCafeInfo(url) {
+function extractCafeInfo(url, fallbackCafeId) {
     const newFormatRegex = /cafes\/(\d+)\/articles\/(\d+)/;
     let matches = url.match(newFormatRegex);
 
@@ -84,16 +84,27 @@ function extractCafeInfo(url) {
         };
     }
 
+    let urlObject;
     try {
-        const urlObject = new URL(url);
-        const cafeId = urlObject.searchParams.get('clubid');
-        const articleId = urlObject.searchParams.get('articleid');
-
-        if (cafeId && articleId) {
-            return { cafeId: parseInt(cafeId), articleId: parseInt(articleId) };
-        }
+        urlObject = new URL(url);
     } catch (e) {
         return null;
+    }
+
+    const cafeId = urlObject.searchParams.get('clubid');
+    const articleId = urlObject.searchParams.get('articleid');
+
+    if (cafeId && articleId) {
+        return { cafeId: parseInt(cafeId), articleId: parseInt(articleId) };
+    }
+
+    // /카페명/글번호 형식. cafeId는 콘텐츠 스크립트가 현재 페이지에서 찾아 넘겨줍니다.
+    const oldPath = urlObject.pathname.match(/^\/[^/]+\/(\d+)\/?$/);
+    if (oldPath && /^\d+$/.test(String(fallbackCafeId))) {
+        return {
+            cafeId: parseInt(fallbackCafeId),
+            articleId: parseInt(oldPath[1])
+        };
     }
 
     return null;
