@@ -32,48 +32,37 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
             const newState = !data.isEnabled;
             chrome.storage.local.set({ isEnabled: newState }, () => {
                 updateContextMenu(newState);
-                if (tab && typeof tab.id === "number") {
-                    chrome.tabs.sendMessage(tab.id, {
-                        action: "stateChanged",
-                        isEnabled: newState
-                    }, () => chrome.runtime.lastError);
-                }
             });
         });
     }
 });
 
-chrome.runtime.onMessage.addListener((message, sender) => {
-    if (message.action === "openLink" && message.url) {
-        const tabId = sender.tab && typeof sender.tab.id === "number" ? sender.tab.id : null;
-        if (tabId === null) {
-            return;
-        }
+async function resolveArticleUrl(requestUrl, articleTitle) {
+    const cafeInfo = extractCafeInfo(requestUrl);
+    if (!cafeInfo) {
+        return requestUrl;
+    }
 
-        const navigate = (url) => {
-            chrome.tabs.update(tabId, { url: url }, () => chrome.runtime.lastError);
-        };
+    console.log(`NCP Request: [${cafeInfo.cafeId}, ${cafeInfo.articleId}] ${articleTitle}`);
 
-        let cafeInfo = extractCafeInfo(message.url);
-        if (!cafeInfo) {
-            navigate(message.url);
-            return;
-        }
+    const finalUrl = await searchCafeArticle(cafeInfo.cafeId, cafeInfo.articleId, articleTitle);
+    if (finalUrl) {
+        return finalUrl;
+    }
 
-        console.log(`NCP Request: [${cafeInfo.cafeId}, ${cafeInfo.articleId}] ${message.title}`);
+    console.log(`NCP Not Found: [${cafeInfo.cafeId}, ${cafeInfo.articleId}] ${articleTitle}`);
+    return requestUrl;
+}
 
-        let url = searchCafeArticle(cafeInfo.cafeId, cafeInfo.articleId, message.title);
-        url.then((finalUrl) => {
-            if (finalUrl) {
-                navigate(finalUrl);
-            } else {
-                console.log(`NCP Not Found: [${cafeInfo.cafeId}, ${cafeInfo.articleId}] ${message.title}`);
-                navigate(message.url);
-            }
-        }).catch((error) => {
-            console.log(`NCP Error: ${error}`);
-            navigate(message.url);
-        });
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message && message.action === "openLink" && message.url) {
+        resolveArticleUrl(message.url, message.title)
+            .then((url) => sendResponse({ url: url }))
+            .catch((error) => {
+                console.log(`NCP Error: ${error}`);
+                sendResponse({ url: message.url });
+            });
+        return true;
     }
 });
 

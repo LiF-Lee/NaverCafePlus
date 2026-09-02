@@ -89,6 +89,32 @@ function collectCurrentArticleIds() {
     return ids;
 }
 
+function resolveTargetWindow(linkElement) {
+    const target = (linkElement.getAttribute('target') || '').trim().toLowerCase();
+
+    if (target === '' || target === '_self') {
+        return window;
+    }
+    if (target === '_top') {
+        return window.top;
+    }
+    if (target === '_parent') {
+        return window.parent;
+    }
+    if (target === '_blank') {
+        return null;
+    }
+
+    try {
+        const named = window.frames[target];
+        if (named && named.location) {
+            return named;
+        }
+    } catch (e) {}
+
+    return null;
+}
+
 function shouldBypass(event, linkElement) {
     if (!isEnabled || event.defaultPrevented) {
         return null;
@@ -121,7 +147,12 @@ function shouldBypass(event, linkElement) {
         return null;
     }
 
-    return { url: linkElement.href, title: title };
+    const targetWindow = resolveTargetWindow(linkElement);
+    if (!targetWindow) {
+        return null;
+    }
+
+    return { url: linkElement.href, title: title, targetWindow: targetWindow };
 }
 
 document.addEventListener('click', (event) => {
@@ -142,6 +173,16 @@ document.addEventListener('click', (event) => {
         action: "openLink",
         url: request.url,
         title: request.title
+    }, (response) => {
+        const url = !chrome.runtime.lastError && response && response.url
+            ? response.url
+            : request.url;
+
+        try {
+            request.targetWindow.location.assign(url);
+        } catch (e) {
+            window.location.assign(url);
+        }
     });
 }, true);
 
@@ -152,11 +193,5 @@ chrome.storage.local.get("isEnabled", (data) => {
 chrome.storage.onChanged.addListener((changes, areaName) => {
     if (areaName === "local" && changes.isEnabled) {
         isEnabled = !!changes.isEnabled.newValue;
-    }
-});
-
-chrome.runtime.onMessage.addListener((message) => {
-    if (message && message.action === "stateChanged") {
-        isEnabled = !!message.isEnabled;
     }
 });
